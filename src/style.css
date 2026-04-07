@@ -1,0 +1,197 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+
+#container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Webcam video (mirrored, fills screen) */
+#webcam {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  z-index: 0;
+  opacity: 0.6; /* Dim webcam slightly to make neon pop */
+}
+
+/* CRT Scanlines and Grid Overlay */
+.scanlines {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  background: 
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 3px 100%;
+}
+
+/* Three.js canvas on top */
+#threeCanvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 10;
+  text-align: center;
+  padding: 18px;
+  pointer-events: none;
+}
+
+#volley {
+  font-size: clamp(28px, 5vw, 56px);
+  font-weight: 900;
+  color: #ff2dff;
+  text-shadow: 0 0 20px #ff2dff, 0 0 40px #ff2dff80;
+  letter-spacing: 8px;
+  font-family: 'Courier New', monospace;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { text-shadow: 0 0 20px #ff2dff, 0 0 40px #ff2dff80; }
+  to   { text-shadow: 0 0 40px #ff2dff, 0 0 80px #ff2dff, 0 0 120px #ff2dff40; }
+}
+
+#scores {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 60px 0;
+  font-size: clamp(20px, 3vw, 40px);
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+#scoreLeft  { color: #00ff88; text-shadow: 0 0 20px #00ff88; }
+#scoreRight { color: #00e5ff; text-shadow: 0 0 20px #00e5ff; }
+
+/* Overlay screens */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  gap: 24px;
+  transition: opacity 0.3s;
+}
+
+.screen h1 {
+  font-size: clamp(40px, 8vw, 96px);
+  letter-spacing: 10px;
+  font-weight: 900;
+  color: #ff2dff;
+  text-shadow: 0 0 40px #ff2dff;
+  animation: pulse 0.8s ease-in-out infinite alternate;
+}
+
+.screen p {
+  font-size: clamp(16px, 2.5vw, 28px);
+  color: #ccc;
+  letter-spacing: 3px;
+  text-align: center;
+  max-width: 600px;
+  line-height: 1.8;
+}
+
+.btn {
+  margin-top: 16px;
+  padding: 16px 48px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  cursor: pointer;
+  background: transparent;
+  border: 3px solid #ff2dff;
+  color: #ff2dff;
+  text-shadow: 0 0 10px #ff2dff;
+  box-shadow: 0 0 20px #ff2dff40, inset 0 0 20px #ff2dff10;
+  transition: all 0.2s;
+  font-family: 'Courier New', monospace;
+}
+.btn:hover:not(:disabled) {
+  background: #ff2dff20;
+  box-shadow: 0 0 40px #ff2dff80, inset 0 0 30px #ff2dff20;
+  transform: scale(1.04);
+}
+.btn:disabled {
+  border-color: #666;
+  color: #666;
+  box-shadow: none;
+  text-shadow: none;
+  cursor: not-allowed;
+}
+
+.camSelect {
+  width:100%;
+  padding:12px 16px;
+  background:#111;
+  color:#00e5ff;
+  border:2px solid #00e5ff44;
+  font-family:'Courier New',monospace;
+  font-size:15px;
+  letter-spacing:2px;
+  outline:none;
+  cursor:pointer;
+  border-radius:4px;
+  box-shadow:0 0 12px #00e5ff22;
+}
+
+#statusMsg {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  color: #fffc;
+  font-size: 15px;
+  letter-spacing: 2px;
+  pointer-events: none;
+  text-shadow: 0 0 10px #fff;
+}
+
+#pointFlash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.hidden { display: none !important; }
+
+/* Camera shake effect */
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.shake {
+  animation: shake 0.3s;
+}
