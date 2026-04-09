@@ -78,18 +78,18 @@ export async function startCamera(deviceId) {
 
   const stream = await navigator.mediaDevices.getUserMedia({
     video: deviceId
-      ? { deviceId: { exact: deviceId }, width: 1280, height: 720 }
-      : { width: 1280, height: 720 }
+      ? { deviceId: { exact: deviceId }, width: 640, height: 360 }
+      : { width: 640, height: 360 }
   });
   videoElem.srcObject = stream;
 
   activeMpCamera = new window.Camera(videoElem, {
-    onFrame: async () => { 
+    onFrame: async () => {
       if (hands) {
-        await hands.send({ image: videoElem }); 
+        await hands.send({ image: videoElem });
       }
     },
-    width: 1280, height: 720
+    width: 640, height: 360
   });
   
   await activeMpCamera.start();

@@ -18,8 +18,14 @@ let ballGlowMesh;
 let handDotL, handDotR;
 let trails = [];
 let trailHistory = [];
-let particles = []; // For collision explosions
+let activeParticles = []; // live particles
+let particlePool = [];    // pre-allocated pool — no GC allocations during play
 let paddleHitFlashL = 0, paddleHitFlashR = 0;
+
+// Cached per-frame values
+let containerEl;
+let cachedAspect = 1;
+let lastTime = 0;
 
 // Game State
 export let gameRunning = false;
@@ -41,43 +47,35 @@ export function initGame(canvasId, scoreCb, overCb, flashCb) {
   onFlash = flashCb;
 
   const canvas = document.getElementById(canvasId);
-  renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  containerEl = canvas.parentElement;
+  renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap at 2× — avoids 4× on 4K/Retina
   renderer.setClearColor(0x000000, 0);
 
   scene = new THREE.Scene();
-  
-  // To keep paddle positions reliable regardless of screen resolution, 
-  // we'll preserve an aspect ratio correction inside the logic or camera.
-  // Using orthographic bounds fixed at -1 to 1 for y, and -aspect to aspect for x.
-  const aspect = window.innerWidth / window.innerHeight;
-  camera = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, 0.1, 10);
+
+  cachedAspect = window.innerWidth / window.innerHeight;
+  camera = new THREE.OrthographicCamera(-cachedAspect, cachedAspect, 1, -1, 0.1, 10);
   camera.position.z = 5;
 
   setupObjects();
 
   window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
-    const newAspect = window.innerWidth / window.innerHeight;
-    camera.left = -newAspect;
-    camera.right = newAspect;
+    cachedAspect = window.innerWidth / window.innerHeight;
+    camera.left = -cachedAspect;
+    camera.right = cachedAspect;
     camera.top = 1;
     camera.bottom = -1;
     camera.updateProjectionMatrix();
-    
-    // adjust paddle X based on aspect (keep them near the edges)
-    const newPaddleX = newAspect - 0.15;
-    paddleLeft.position.set(-newPaddleX, paddleYL, 0);
-    paddleRight.position.set(newPaddleX, paddleYR, 0);
+    paddleLeft.position.set(-(cachedAspect - 0.15), paddleYL, 0);
+    paddleRight.position.set((cachedAspect - 0.15), paddleYR, 0);
   });
-  
-  // Initial size
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  const curAspect = window.innerWidth / window.innerHeight;
-  paddleLeft.position.set(-(curAspect - 0.15), 0, 0);
-  paddleRight.position.set((curAspect - 0.15), 0, 0);
 
-  // Start loop
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  paddleLeft.position.set(-(cachedAspect - 0.15), 0, 0);
+  paddleRight.position.set((cachedAspect - 0.15), 0, 0);
+
   requestAnimationFrame(animate);
 }
 
@@ -157,39 +155,50 @@ function setupObjects() {
   });
   handDotR = new THREE.Mesh(ringGeoR, ringMatR);
   scene.add(handDotR);
-}
 
-// Particle System
-function createExplosion(x, y, colorHex) {
-  const count = 15;
-  for(let i=0; i<count; i++) {
-    const geo = new THREE.CircleGeometry(0.015, 8);
+  // Pre-allocate particle pool — stays in scene, just toggled visible/invisible
+  const pGeo = new THREE.CircleGeometry(0.015, 8);
+  for (let i = 0; i < 60; i++) {
     const mat = new THREE.MeshBasicMaterial({
-      color: colorHex, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
+      color: 0xffffff, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false
     });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y, 0);
-    
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 0.02 + Math.random() * 0.03;
-    const velocity = new THREE.Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed);
-    
+    const mesh = new THREE.Mesh(pGeo, mat); // shared geometry — no per-particle alloc
+    mesh.visible = false;
     scene.add(mesh);
-    particles.push({ mesh, velocity, life: 1.0 });
+    particlePool.push(mesh);
   }
 }
 
-function updateParticles() {
-  for(let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.life -= 0.04;
-    if(p.life <= 0) {
-      scene.remove(p.mesh);
-      particles.splice(i, 1);
+// Particle System — pool-based, zero allocations during gameplay
+function createExplosion(x, y, colorHex) {
+  const count = Math.min(12, particlePool.length);
+  for (let i = 0; i < count; i++) {
+    const mesh = particlePool.pop();
+    mesh.material.color.setHex(colorHex);
+    mesh.material.opacity = 0.8;
+    mesh.position.set(x, y, 0);
+    mesh.scale.setScalar(1);
+    mesh.visible = true;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.02 + Math.random() * 0.03;
+    activeParticles.push({ mesh, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1.0 });
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const p = activeParticles[i];
+    p.life -= 0.04 * dt;
+    if (p.life <= 0) {
+      p.mesh.visible = false;
+      p.mesh.material.opacity = 0;
+      particlePool.push(p.mesh);
+      activeParticles.splice(i, 1);
       continue;
     }
-    p.mesh.position.x += p.velocity.x;
-    p.mesh.position.y += p.velocity.y;
+    p.mesh.position.x += p.vx * dt;
+    p.mesh.position.y += p.vy * dt;
     p.mesh.material.opacity = p.life;
     p.mesh.scale.setScalar(p.life);
   }
@@ -223,40 +232,41 @@ const circularBuffer = new Array(MAX_TRAILS).fill(null).map(() => new THREE.Vect
 let trailIdx = 0;
 
 function addScreenShake() {
-  document.getElementById('container').classList.add('shake');
-  setTimeout(() => document.getElementById('container').classList.remove('shake'), 300);
+  containerEl.classList.add('shake');
+  setTimeout(() => containerEl.classList.remove('shake'), 300);
 }
 
 function updateHandDots() {
-  const aspect = window.innerWidth / window.innerHeight;
   if (handL) {
-    handDotL.position.set((handL.x * 2 - 1) * aspect, 1 - handL.y * 2, 0);
+    handDotL.position.set((handL.x * 2 - 1) * cachedAspect, 1 - handL.y * 2, 0);
     handDotL.material.opacity = 0.8;
   } else {
     handDotL.material.opacity = 0;
   }
   if (handR) {
-    handDotR.position.set((handR.x * 2 - 1) * aspect, 1 - handR.y * 2, 0);
+    handDotR.position.set((handR.x * 2 - 1) * cachedAspect, 1 - handR.y * 2, 0);
     handDotR.material.opacity = 0.8;
   } else {
     handDotR.material.opacity = 0;
   }
 }
 
-function animate() {
+function animate(now) {
   requestAnimationFrame(animate);
-  if (gameRunning) gameTick();
-  updateParticles();
+  // dt normalised to 60fps: 1.0 = on time, 2.0 = frame took twice as long
+  const dt = lastTime > 0 ? Math.min((now - lastTime) / 16.667, 3) : 1;
+  lastTime = now;
+  if (gameRunning) gameTick(dt);
+  updateParticles(dt);
   updateHandDots();
   renderer.render(scene, camera);
 }
 
-function gameTick() {
-  ballPos.x += ballDir.x * ballSpeed;
-  ballPos.y += ballDir.y * ballSpeed;
+function gameTick(dt) {
+  ballPos.x += ballDir.x * ballSpeed * dt;
+  ballPos.y += ballDir.y * ballSpeed * dt;
 
-  const aspect = window.innerWidth / window.innerHeight;
-  const boundX = aspect + 0.1; 
+  const boundX = cachedAspect + 0.1;
 
   // Top/bottom bounce
   if (ballPos.y > 0.97) { ballPos.y = 0.97; ballDir.y *= -1; playWallHit(); }
@@ -335,14 +345,14 @@ function gameTick() {
     }
   }
 
-  // Hand tracking input
+  // Hand tracking input — lerp capped at 1 so it never overshoots
   if (handL) {
     const targetY = 1 - handL.y * 2;
-    paddleYL += (targetY - paddleYL) * 0.25;
+    paddleYL += (targetY - paddleYL) * Math.min(1, 0.25 * dt);
   }
   if (handR) {
     const targetY = 1 - handR.y * 2;
-    paddleYR += (targetY - paddleYR) * 0.25;
+    paddleYR += (targetY - paddleYR) * Math.min(1, 0.25 * dt);
   }
 
   paddleYL = Math.max(-1 + pHalf, Math.min(1 - pHalf, paddleYL));
