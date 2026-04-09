@@ -30,6 +30,7 @@ function handleGameOver(winner, finalScoreStr) {
   winnerText.textContent = winner === 'L' ? '🟢 LEFT WINS!' : '🔵 RIGHT WINS!';
   finalScoreTx.textContent = finalScoreStr;
   gameOverScr.classList.remove('hidden');
+  statusMsg.style.display = '';
 }
 
 function flashPoint(color) {
@@ -77,7 +78,8 @@ async function playSequence() {
   
   startScreen.classList.add('hidden');
   gameOverScr.classList.add('hidden');
-  
+  statusMsg.style.display = 'none';
+
   doCountdown(() => {
     startBtn.disabled = false;
     restartBtn.disabled = false;

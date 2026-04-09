@@ -1,10 +1,20 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+body { background: #000; overflow: hidden; font-family: 'Orbitron', 'Courier New', monospace; }
 
 #container {
   position: relative;
   width: 100vw;
   height: 100vh;
+}
+
+/* Vignette */
+#container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.75) 100%);
 }
 
 /* Webcam video (mirrored, fills screen) */
@@ -51,12 +61,11 @@ body { background: #000; overflow: hidden; font-family: 'Courier New', monospace
 }
 
 #volley {
-  font-size: clamp(28px, 5vw, 56px);
-  font-weight: 900;
+  font-size: clamp(14px, 2.5vw, 32px);
+  font-weight: 700;
   color: #ff2dff;
   text-shadow: 0 0 20px #ff2dff, 0 0 40px #ff2dff80;
-  letter-spacing: 8px;
-  font-family: 'Courier New', monospace;
+  letter-spacing: 6px;
   animation: pulse 1s ease-in-out infinite alternate;
 }
 
@@ -68,14 +77,14 @@ body { background: #000; overflow: hidden; font-family: 'Courier New', monospace
 #scores {
   display: flex;
   justify-content: space-between;
-  padding: 10px 60px 0;
-  font-size: clamp(20px, 3vw, 40px);
-  font-weight: 700;
-  letter-spacing: 4px;
+  padding: 10px 80px 0;
+  font-size: clamp(28px, 4vw, 56px);
+  font-weight: 900;
+  letter-spacing: 6px;
 }
 
-#scoreLeft  { color: #00ff88; text-shadow: 0 0 20px #00ff88; }
-#scoreRight { color: #00e5ff; text-shadow: 0 0 20px #00e5ff; }
+#scoreLeft  { color: #00ff88; text-shadow: 0 0 20px #00ff88, 0 0 50px #00ff8860; }
+#scoreRight { color: #00e5ff; text-shadow: 0 0 20px #00e5ff, 0 0 50px #00e5ff60; }
 
 /* Overlay screens */
 .screen {
@@ -89,15 +98,20 @@ body { background: #000; overflow: hidden; font-family: 'Courier New', monospace
   background: rgba(0,0,0,0.85);
   backdrop-filter: blur(8px);
   gap: 24px;
-  transition: opacity 0.3s;
+  animation: screenFadeIn 0.4s ease;
+}
+
+@keyframes screenFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 .screen h1 {
-  font-size: clamp(40px, 8vw, 96px);
-  letter-spacing: 10px;
+  font-size: clamp(28px, 5.5vw, 72px);
+  letter-spacing: 8px;
   font-weight: 900;
   color: #ff2dff;
-  text-shadow: 0 0 40px #ff2dff;
+  text-shadow: 0 0 40px #ff2dff, 0 0 80px #ff2dff60;
   animation: pulse 0.8s ease-in-out infinite alternate;
 }
 
@@ -159,11 +173,12 @@ body { background: #000; overflow: hidden; font-family: 'Courier New', monospace
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
-  color: #fffc;
-  font-size: 15px;
+  color: #aaa;
+  font-size: 12px;
   letter-spacing: 2px;
   pointer-events: none;
-  text-shadow: 0 0 10px #fff;
+  text-shadow: 0 0 8px #fff6;
+  white-space: nowrap;
 }
 
 #pointFlash {

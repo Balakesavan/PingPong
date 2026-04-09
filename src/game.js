@@ -14,9 +14,12 @@ const MAX_TRAILS  = 18;
 // Three.js instances
 let scene, camera, renderer;
 let paddleLeft, paddleRight, ball;
+let ballGlowMesh;
+let handDotL, handDotR;
 let trails = [];
 let trailHistory = [];
 let particles = []; // For collision explosions
+let paddleHitFlashL = 0, paddleHitFlashR = 0;
 
 // Game State
 export let gameRunning = false;
@@ -109,8 +112,8 @@ function setupObjects() {
     color: 0x00e5ff, transparent: true, opacity: 0.22,
     blending: THREE.AdditiveBlending, depthWrite: false
   });
-  const ballGlow = new THREE.Mesh(ballGlowGeo, ballGlowMat);
-  ball.add(ballGlow);
+  ballGlowMesh = new THREE.Mesh(ballGlowGeo, ballGlowMat);
+  ball.add(ballGlowMesh);
   scene.add(ball);
 
   for (let i = 0; i < MAX_TRAILS; i++) {
@@ -135,8 +138,25 @@ function setupObjects() {
     }
   }
   const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
-  const lineMat = new THREE.LineBasicMaterial({ color: 0x444466, transparent: true, opacity: 0.5 });
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x3355cc, transparent: true, opacity: 0.7 });
   scene.add(new THREE.LineSegments(lineGeo, lineMat));
+
+  // Hand indicator rings
+  const ringGeoL = new THREE.RingGeometry(0.032, 0.048, 32);
+  const ringMatL = new THREE.MeshBasicMaterial({
+    color: 0x00ff88, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+  });
+  handDotL = new THREE.Mesh(ringGeoL, ringMatL);
+  scene.add(handDotL);
+
+  const ringGeoR = new THREE.RingGeometry(0.032, 0.048, 32);
+  const ringMatR = new THREE.MeshBasicMaterial({
+    color: 0x00e5ff, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+  });
+  handDotR = new THREE.Mesh(ringGeoR, ringMatR);
+  scene.add(handDotR);
 }
 
 // Particle System
@@ -207,10 +227,27 @@ function addScreenShake() {
   setTimeout(() => document.getElementById('container').classList.remove('shake'), 300);
 }
 
+function updateHandDots() {
+  const aspect = window.innerWidth / window.innerHeight;
+  if (handL) {
+    handDotL.position.set((handL.x * 2 - 1) * aspect, 1 - handL.y * 2, 0);
+    handDotL.material.opacity = 0.8;
+  } else {
+    handDotL.material.opacity = 0;
+  }
+  if (handR) {
+    handDotR.position.set((handR.x * 2 - 1) * aspect, 1 - handR.y * 2, 0);
+    handDotR.material.opacity = 0.8;
+  } else {
+    handDotR.material.opacity = 0;
+  }
+}
+
 function animate() {
   requestAnimationFrame(animate);
   if (gameRunning) gameTick();
   updateParticles();
+  updateHandDots();
   renderer.render(scene, camera);
 }
 
@@ -239,6 +276,7 @@ function gameTick() {
       ballPos.x = pxL + PADDLE_W + 0.005;
       ballSpeed = Math.min(ballSpeed + SPEED_INC, 0.06);
       volley++;
+      paddleHitFlashL = 1.0;
       onScoreUpdate(scoreL, scoreR, volley);
       onFlash('#00ff88aa');
       playPaddleHit();
@@ -255,6 +293,7 @@ function gameTick() {
       ballPos.x = pxR - PADDLE_W - 0.005;
       ballSpeed = Math.min(ballSpeed + SPEED_INC, 0.06);
       volley++;
+      paddleHitFlashR = 1.0;
       onScoreUpdate(scoreL, scoreR, volley);
       onFlash('#00e5ffaa');
       playPaddleHit();
@@ -313,21 +352,39 @@ function gameTick() {
   paddleRight.position.y = paddleYR;
   ball.position.set(ballPos.x, ballPos.y, 0);
 
-  // Trails (Circular buffer)
+  // Trails (Circular buffer) with color gradient cyan → magenta
   circularBuffer[trailIdx].copy(ballPos);
-  
+
   for(let i=0; i<MAX_TRAILS; i++) {
-    // trailIdx is newest, (trailIdx - i + MAX) % MAX is older
     const idx = (trailIdx - i + MAX_TRAILS) % MAX_TRAILS;
     const mesh = trails[i];
     const pos = circularBuffer[idx];
-    if(pos.x === 0 && pos.y === 0 && trails[i].material.opacity === 0) continue; // skip uninit
-    
+    if(pos.x === 0 && pos.y === 0 && trails[i].material.opacity === 0) continue;
+
     mesh.position.set(pos.x, pos.y, 0);
     const scale = Math.max(0, 1 - (i / MAX_TRAILS));
     mesh.scale.set(scale, scale, 1);
     mesh.material.opacity = scale * 0.55;
+    // Color gradient: newest = cyan (#00e5ff), oldest = magenta (#ff00ff)
+    const t = i / MAX_TRAILS;
+    mesh.material.color.setRGB(t, 1 - t * 0.9, 1);
   }
-  
+
   trailIdx = (trailIdx + 1) % MAX_TRAILS;
+
+  // Dynamic ball glow based on speed
+  const speedRatio = Math.min(1, (ballSpeed - BALL_SPEED) / (0.06 - BALL_SPEED));
+  const glowScale = 1 + speedRatio * 2.5;
+  ballGlowMesh.scale.setScalar(glowScale);
+  ballGlowMesh.material.opacity = 0.22 + speedRatio * 0.35;
+
+  // Paddle hit flash decay
+  if (paddleHitFlashL > 0) {
+    paddleHitFlashL = Math.max(0, paddleHitFlashL - 0.08);
+    paddleLeft.children[0].material.opacity = 0.18 + paddleHitFlashL * 0.6;
+  }
+  if (paddleHitFlashR > 0) {
+    paddleHitFlashR = Math.max(0, paddleHitFlashR - 0.08);
+    paddleRight.children[0].material.opacity = 0.18 + paddleHitFlashR * 0.6;
+  }
 }
