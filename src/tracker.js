@@ -67,13 +67,13 @@ export async function populateCameras() {
 }
 
 export async function startCamera(deviceId) {
-  if (activeMpCamera) { 
-    await activeMpCamera.stop(); 
-    activeMpCamera = null; 
+  if (activeMpCamera) {
+    activeMpCamera.stop();
+    activeMpCamera = null;
   }
-  if (videoElem.srcObject) { 
-    videoElem.srcObject.getTracks().forEach(t => t.stop()); 
-    videoElem.srcObject = null; 
+  if (videoElem.srcObject) {
+    videoElem.srcObject.getTracks().forEach(t => t.stop());
+    videoElem.srcObject = null;
   }
 
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -83,20 +83,24 @@ export async function startCamera(deviceId) {
   });
   videoElem.srcObject = stream;
 
-  let processing = false;
-  activeMpCamera = new window.Camera(videoElem, {
-    onFrame: async () => {
-      if (processing || !hands) return;
-      processing = true;
-      try {
-        await hands.send({ image: videoElem });
-      } finally {
-        processing = false;
-      }
-    },
-    width: 640, height: 360
+  await new Promise(resolve => {
+    if (videoElem.readyState >= 1) resolve();
+    else videoElem.addEventListener('loadedmetadata', resolve, { once: true });
   });
-  
-  await activeMpCamera.start();
+  videoElem.play();
+
+  let stopped = false;
+  let processing = false;
+
+  function loop() {
+    if (stopped) return;
+    requestAnimationFrame(loop);
+    if (processing || !hands || videoElem.readyState < 2) return;
+    processing = true;
+    hands.send({ image: videoElem }).finally(() => { processing = false; });
+  }
+  requestAnimationFrame(loop);
+
+  activeMpCamera = { stop: () => { stopped = true; } };
   statusMsg.textContent = '✋ Raise both hands to control the paddles';
 }
