@@ -21,6 +21,8 @@ export function initTracker() {
     minTrackingConfidence: 0.5
   });
 
+  hands.initialize().catch(console.error);
+
   hands.onResults((results) => {
     handL = null; handR = null;
     if (!results.multiHandLandmarks) return;

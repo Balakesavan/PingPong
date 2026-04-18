@@ -1,4 +1,6 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
+/* Hide MediaPipe's internal loading canvas */
+body > canvas { display: none !important; }
 body { background: #000; overflow: hidden; font-family: 'Orbitron', 'Courier New', monospace; }
 
 #container {
