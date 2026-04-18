@@ -83,10 +83,15 @@ export async function startCamera(deviceId) {
   });
   videoElem.srcObject = stream;
 
+  let processing = false;
   activeMpCamera = new window.Camera(videoElem, {
     onFrame: async () => {
-      if (hands) {
+      if (processing || !hands) return;
+      processing = true;
+      try {
         await hands.send({ image: videoElem });
+      } finally {
+        processing = false;
       }
     },
     width: 640, height: 360
