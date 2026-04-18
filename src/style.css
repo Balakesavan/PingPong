@@ -192,6 +192,86 @@ body { background: #000; overflow: hidden; font-family: 'Orbitron', 'Courier New
 
 .hidden { display: none !important; }
 
+/* ── Mode selector ─────────────────────────────────────────────────────────── */
+#modeSelect {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.modeBtn {
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  background: transparent;
+  border: 2px solid #555;
+  color: #888;
+  font-family: 'Orbitron', 'Courier New', monospace;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+.modeBtn:hover {
+  border-color: #ff2dff;
+  color: #ff2dff;
+}
+.modeBtn.active {
+  border-color: #ff2dff;
+  color: #ff2dff;
+  text-shadow: 0 0 10px #ff2dff;
+  box-shadow: 0 0 16px #ff2dff40;
+}
+
+/* ── Beat Saber HUD ────────────────────────────────────────────────────────── */
+#bsHud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 18px 28px;
+  pointer-events: none;
+}
+
+#bsScore {
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 0 20px #fff8, 0 0 40px #fff4;
+  min-width: 160px;
+}
+
+#bsComboWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#bsComboLabel {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #aaa;
+}
+#bsCombo {
+  font-size: clamp(22px, 3.5vw, 44px);
+  font-weight: 900;
+  color: #ff2dff;
+  text-shadow: 0 0 20px #ff2dff, 0 0 40px #ff2dff60;
+  letter-spacing: 3px;
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+
+#bsLives {
+  font-size: clamp(20px, 3vw, 36px);
+  letter-spacing: 6px;
+  color: #ff4466;
+  text-shadow: 0 0 16px #ff4466, 0 0 32px #ff446660;
+  min-width: 120px;
+  text-align: right;
+}
+
 /* Camera shake effect */
 @keyframes shake {
   0% { transform: translate(1px, 1px) rotate(0deg); }

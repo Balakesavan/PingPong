@@ -14,6 +14,7 @@
   <div class="scanlines"></div>
   <canvas id="threeCanvas"></canvas>
 
+  <!-- ── Pong HUD ── -->
   <div id="hud">
     <div id="scores">
       <span id="scoreLeft">0</span>
@@ -22,13 +23,40 @@
     <div id="volley">VOLLEY: 0</div>
   </div>
 
+  <!-- ── Beat Saber HUD ── -->
+  <div id="bsHud" class="hidden">
+    <div id="bsScore">0</div>
+    <div id="bsComboWrap">
+      <span id="bsComboLabel">COMBO</span>
+      <span id="bsCombo">×1</span>
+    </div>
+    <div id="bsLives">♥♥♥</div>
+  </div>
+
   <div id="pointFlash"></div>
 
-  <!-- Start screen -->
+  <!-- ── Start screen ── -->
   <div class="screen" id="startScreen">
-    <h1>REAL LIFE PONG</h1>
-    <p>Stand back · Raise your hands · Use your WRISTS to control the paddles<br>
-       Left hand = Left paddle &nbsp;|&nbsp; Right hand = Right paddle</p>
+    <h1 id="startTitle">REAL LIFE PONG</h1>
+
+    <!-- Mode selector -->
+    <div id="modeSelect">
+      <button class="modeBtn active" id="btnPong">🏓 PONG</button>
+      <button class="modeBtn" id="btnBeatSaber">⚔ BEAT SABER</button>
+    </div>
+
+    <!-- Pong instructions -->
+    <p id="pongInstructions">
+      Stand back · Raise your hands · Use your WRISTS to control the paddles<br>
+      Left hand = Left paddle &nbsp;|&nbsp; Right hand = Right paddle
+    </p>
+
+    <!-- Beat Saber instructions -->
+    <p id="bsInstructions" class="hidden">
+      Blocks fly toward you — slash them with your hands!<br>
+      🟢 Green blocks = Left hand &nbsp;|&nbsp; 🔵 Cyan blocks = Right hand<br>
+      Match the arrow direction for bonus points · Miss 3 = game over
+    </p>
 
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:420px;">
       <label style="color:#aaa;letter-spacing:3px;font-size:13px;">SELECT CAMERA</label>
@@ -40,22 +68,29 @@
     <button class="btn" id="startBtn">▶ START GAME</button>
   </div>
 
-  <!-- Countdown screen -->
+  <!-- ── Countdown screen ── -->
   <div class="screen hidden" id="countdownScreen">
     <h1 id="countdownText" style="font-size: clamp(80px, 20vw, 240px);">3</h1>
   </div>
 
-  <!-- Game over screen -->
+  <!-- ── Pong game over screen ── -->
   <div class="screen hidden" id="gameOverScreen">
     <h1 id="winnerText">PLAYER 1 WINS!</h1>
     <p id="finalScore"></p>
     <button class="btn" id="restartBtn">↺ PLAY AGAIN</button>
   </div>
 
-  <div id="statusMsg">Initialising camera & pose tracking…</div>
+  <!-- ── Beat Saber game over screen ── -->
+  <div class="screen hidden" id="bsGameOverScreen">
+    <h1 style="color:#ff2dff">GAME OVER</h1>
+    <p id="bsFinalScore" style="font-size:clamp(22px,4vw,52px);color:#fff;letter-spacing:4px;"></p>
+    <p id="bsHighScoreMsg" style="color:#ff2dff;letter-spacing:3px;font-size:16px;"></p>
+    <button class="btn" id="bsRestartBtn">↺ PLAY AGAIN</button>
+  </div>
+
+  <div id="statusMsg">Initialising camera &amp; pose tracking…</div>
 </div>
 
-<!-- Scripts -->
 <!-- MediaPipe Hands -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
